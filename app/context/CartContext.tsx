@@ -1,0 +1,124 @@
+// app/context/CartContext.tsx
+//
+// Shared cart state, available to any component in the app via useCart().
+// Saved to localStorage so the cart survives page refreshes.
+
+"use client";
+
+import { createContext, useContext, useEffect, useState } from "react";
+
+export type CartItem = {
+  slug: string;
+  name: string;
+  image: string;
+  variantLabel: string;
+  price: number;
+  quantity: number;
+};
+
+type CartContextType = {
+  items: CartItem[];
+  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
+  removeItem: (slug: string, variantLabel: string) => void;
+  updateQuantity: (slug: string, variantLabel: string, quantity: number) => void;
+  clearCart: () => void;
+  cartCount: number;
+  cartTotal: number;
+};
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
+const STORAGE_KEY = "giahban-cart";
+
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load saved cart once, when the app first mounts in the browser
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setItems(JSON.parse(saved));
+      } catch {
+        // Ignore corrupted data, start with an empty cart
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save to localStorage every time the cart changes (but not on the initial empty load)
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+  }, [items, isLoaded]);
+
+  // quantity defaults to 1 so existing calls (like from ProductCard) still work
+  function addItem(newItem: Omit<CartItem, "quantity">, quantity: number = 1) {
+    setItems((current) => {
+      const existing = current.find(
+        (item) => item.slug === newItem.slug && item.variantLabel === newItem.variantLabel
+      );
+      if (existing) {
+        return current.map((item) =>
+          item === existing ? { ...item, quantity: item.quantity + quantity } : item
+        );
+      }
+      return [...current, { ...newItem, quantity }];
+    });
+  }
+
+  function removeItem(slug: string, variantLabel: string) {
+    setItems((current) =>
+      current.filter((item) => !(item.slug === slug && item.variantLabel === variantLabel))
+    );
+  }
+
+  function updateQuantity(slug: string, variantLabel: string, quantity: number) {
+    if (quantity < 1) {
+      removeItem(slug, variantLabel);
+      return;
+    }
+    setItems((current) =>
+      current.map((item) =>
+        item.slug === slug && item.variantLabel === variantLabel
+          ? { ...item, quantity }
+          : item
+      )
+    );
+  }
+
+  // Empties the cart entirely — used after a checkout order is
+  // successfully submitted, so the next visit starts fresh.
+  function clearCart() {
+    setItems([]);
+  }
+
+  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  return (
+    <CartContext.Provider
+      value={{
+        items,
+        addItem,
+        removeItem,
+        updateQuantity,
+        clearCart,
+        cartCount,
+        cartTotal,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export function useCart() {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCart must be used inside a CartProvider");
+  }
+  return context;
+}

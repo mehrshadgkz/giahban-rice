@@ -1,0 +1,15 @@
+/* app/globals.css
+   name: globals
+   version: 1.0.0 */
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
