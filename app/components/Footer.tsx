@@ -1,14 +1,16 @@
 // Path: /app/components
 // File: Footer.tsx
-// Version: 1.0.0
+// Version: 1.0.1
 //
-// "use client" needed for the lazy-loaded Enamad trust badge script,
-// which only initializes once the footer scrolls into view.
+// v1.0.1: lucide-react removed brand/logo icons (Instagram, Facebook, etc.)
+// in a recent version due to trademark concerns. Swapped the Instagram
+// icon for a generic "Camera" icon as a placeholder — replace with an
+// actual Instagram logo image/SVG later if the real brand mark is wanted.
 
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Instagram, MessageCircle, Send, MapPin } from "lucide-react";
+import { Camera, MessageCircle, Send, MapPin } from "lucide-react";
 
 const mainPages = [
   { label: "خانه", href: "/" },
@@ -29,8 +31,6 @@ export default function Footer() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          // Placeholder for Enamad trust-badge script injection once
-          // the real Enamad code/id is available.
           observer.disconnect();
         }
       },
@@ -89,7 +89,7 @@ export default function Footer() {
           <div ref={enamadRef} className="w-20 h-20 bg-gray-100 rounded" />
           <div className="flex gap-3 mt-4">
             <a href="#" aria-label="اینستاگرام" className="text-gray-500 hover:text-green-800">
-              <Instagram size={20} />
+              <Camera size={20} />
             </a>
             <a href="#" aria-label="واتساپ" className="text-gray-500 hover:text-green-800">
               <MessageCircle size={20} />
