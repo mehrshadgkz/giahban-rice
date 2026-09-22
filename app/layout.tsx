@@ -1,4 +1,6 @@
-// app/layout.tsx
+// Path: /app
+// File: layout.tsx
+// Version: 1.0.0
 
 import "./globals.css";
 import Header from "./components/Header";

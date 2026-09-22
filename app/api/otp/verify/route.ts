@@ -1,4 +1,6 @@
-// app/api/otp/verify/route.ts
+// Path: /app/api/otp/verify
+// File: route.ts
+// Version: 1.0.0
 //
 // Checks the submitted code against the row stored in Supabase's
 // otp_codes table (previously an in-memory Map — see send/route.ts

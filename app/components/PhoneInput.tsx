@@ -1,7 +1,9 @@
-// app/components/PhoneInput.tsx
+// Path: /app/components
+// File: PhoneInput.tsx
+// Version: 1.0.0
 //
 // Segmented phone number input. 4 fixed boxes ("+", "9", "8", "9") + 9
-// editable boxes.
+// editable boxes, sized to fit one row on mobile.
 //
 // Three distinct behaviors, matched to three real situations:
 // - Typing into an EMPTY box with nothing after it (normal forward fill)
@@ -9,10 +11,9 @@
 // - Typing into an EMPTY box that has digits after it (a skipped/missed
 //   digit) → inserts and shifts everything after it right, then advances.
 // - Typing into a box that ALREADY has a digit (fixing a wrong digit)
-//   → replaces it in place and does NOT auto-advance. This is the key
-//   fix: auto-advancing after a correction used to auto-select the next
-//   box's existing digit, so a coincidentally-matching next keystroke
-//   would silently overwrite a digit that didn't need touching.
+//   → replaces it in place and does NOT auto-advance. This avoids a
+//   coincidentally-matching next keystroke silently overwriting a digit
+//   that didn't need touching.
 
 "use client";
 
@@ -44,21 +45,16 @@ export default function PhoneInput({ value, onChange }: PhoneInputProps) {
     const next = [...digits];
 
     if (wasEmpty && hasDigitsAfter) {
-      // Missed-digit case: shift everything right to make room, then insert.
       for (let i = BOX_COUNT - 1; i > index; i--) {
         next[i] = next[i - 1];
       }
       next[index] = char;
     } else {
-      // Either a normal empty-box fill, or a correction of an existing digit.
       next[index] = char;
     }
 
     onChange(next.join(""));
 
-    // FIX: only auto-advance when we were filling an empty box (forward
-    // fill or missed-digit insert). A correction (box wasn't empty) stays
-    // put, so the person can review before moving on themselves.
     if (wasEmpty && index < BOX_COUNT - 1) {
       inputsRef.current[index + 1]?.focus();
     }

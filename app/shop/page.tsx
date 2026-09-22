@@ -1,13 +1,10 @@
-// app/shop/page.tsx
+// Path: /app/shop
+// File: page.tsx
+// Version: 1.0.0
 //
 // The shop listing page — shows all products, filterable by category
-// via the URL (e.g. /shop?category=rice), matching the links from your
+// via the URL (e.g. /shop?category=rice), matching the links from the
 // homepage CategoryBanners.
-//
-// Note: this reads filters from the URL instead of using React state.
-// That means filter buttons are just links — Next.js already makes
-// navigation between them instant (no full page reload), so we get the
-// same fast feel as your old AJAX filter in WordPress, with far less code.
 
 import ProductCard from "../components/ProductCard";
 import { products } from "../data/products";
@@ -35,7 +32,6 @@ export default async function ShopPage({
     <main className="max-w-6xl mx-auto px-6 py-12">
       <h1 className="text-2xl font-bold text-center mb-8">فروشگاه</h1>
 
-      {/* Category filter — plain links with query strings, no client JS needed */}
       <div className="flex flex-wrap justify-center gap-2 mb-10">
         {categories.map((cat) => {
           const isActive = category === cat.value;
@@ -61,7 +57,7 @@ export default async function ShopPage({
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {filteredProducts.map((product) => (
-            <ProductCard key={product.name} {...product} />
+            <ProductCard key={product.slug} {...product} />
           ))}
         </div>
       )}

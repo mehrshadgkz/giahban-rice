@@ -1,4 +1,6 @@
-// app/data/products.ts
+// Path: /app/data
+// File: products.ts
+// Version: 1.0.0
 //
 // Central product data. Adding fields here (like `specs` or `fullDescription`)
 // makes them available on the product detail page automatically — nothing
@@ -20,16 +22,11 @@
 export type ProductVariant = {
   label: string;
   price: number;
-  // These three are optional — only fill them in when you have the info,
-  // like we do for "الک شده" below. If left out, the page just won't show that line.
   brokenRicePercent?: number;
   suitability?: string;
   availability?: "موجود" | "ناموجود";
 };
 
-// The specs table on the "توضیحات تکمیلی" (additional info) tab.
-// Every field is optional — the table only renders rows that have a value,
-// so simpler products don't need to fill all of these in.
 export type ProductSpecs = {
   weightLabel?: string;
   dimensions?: string;
@@ -51,7 +48,7 @@ export type Product = {
   sku?: string;
   brand?: string;
   shortDescription?: string;
-  fullDescription?: string; // paragraphs separated by \n\n
+  fullDescription?: string;
   specs?: ProductSpecs;
   variants: ProductVariant[];
   soldOut?: boolean;
@@ -131,10 +128,6 @@ export const products: Product[] = [
     variants: [{ label: "الک شده", price: 2350000, availability: "موجود" }],
   },
   {
-    // Three-tier variant structure, matching the WooCommerce "نیم دانه / لاشه / سرلاشه" options.
-    // TODO: confirm the exact price for "لاشه" — screenshots only showed the
-    // low (نیم دانه) and high (سرلاشه) ends of the range, this middle value is
-    // a placeholder estimate for now.
     slug: "tarom-broken-rice",
     name: "برنج طارم شکسته فریدونکنار — ۵ کیلوگرم",
     image: "/products/rice/tarom-broken-rice/tarom-broken-rice.png",
@@ -144,7 +137,7 @@ export const products: Product[] = [
     shortDescription: "برنج طارم شکسته، اقتصادی، مناسب پخت روزانه.",
     variants: [
       { label: "نیم دانه", price: 1500000 },
-      { label: "لاشه", price: 1650000 }, // placeholder — confirm real price
+      { label: "لاشه", price: 1650000 },
       { label: "سرلاشه", price: 1850000 },
     ],
   },
@@ -191,9 +184,6 @@ export const products: Product[] = [
   },
 ];
 
-// Featured/best-seller section on the homepage — currently the three
-// products that are actually in stock. Update this list manually as
-// stock changes, or once the admin panel can mark "featured" per product.
 export const featuredProducts = products.filter(
   (p) => !p.soldOut && p.category === "rice"
 );

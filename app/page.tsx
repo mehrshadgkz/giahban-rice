@@ -1,8 +1,16 @@
+// Path: /app
+// File: page.tsx
+// Version: 1.0.0
+//
+// Homepage. Header and Footer are handled globally in layout.tsx, so
+// this file only needs the homepage-specific sections.
+
 import Hero from "./components/Hero";
 import ProductCard from "./components/ProductCard";
 import Ticker from "./components/Ticker";
 import CategoryBanner from "./components/CategoryBanner";
 import BlogPreview from "./components/BlogPreview";
+import { featuredProducts } from "./data/products";
 
 export default function Home() {
   return (
@@ -14,37 +22,9 @@ export default function Home() {
           پرفروش‌ترین محصولات
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <ProductCard
-            name="برنج طارم هاشمی فریدونکنار — ۵ کیلوگرم"
-            image="/rice-bag-black.png"
-            weightKg={5}
-            variants={[
-              { label: "الک نشده", price: 2250000 },
-              { label: "الک شده", price: 2400000 },
-            ]}
-          />
-          <ProductCard
-            name="برنج طارم فریدونکنار — ۵ کیلوگرم"
-            image="/rice-bag-blue.png"
-            weightKg={5}
-            variants={[
-              { label: "الک نشده", price: 2225000 },
-              { label: "الک شده", price: 2375000 },
-            ]}
-          />
-          <ProductCard
-            name="برنج کهنه اعلا فریدونکنار — ۵ کیلوگرم"
-            image="/rice-bag-orange.png"
-            weightKg={5}
-            variants={[{ label: "الک شده", price: 2350000 }]}
-          />
-          <ProductCard
-            name="برنج کشت دوم فریدونکنار — ۵ کیلوگرم"
-            image="/rice-bag-green.png"
-            soldOut
-            weightKg={5}
-            variants={[{ label: "الک شده", price: 2500000 }]}
-          />
+          {featuredProducts.map((product) => (
+            <ProductCard key={product.slug} {...product} />
+          ))}
         </div>
       </section>
 

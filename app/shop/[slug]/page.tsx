@@ -1,14 +1,16 @@
-// app/shop/[slug]/page.tsx
+// Path: /app/shop/[slug]
+// File: page.tsx
+// Version: 1.0.0
 //
 // Product detail page — one file handles every product because of the
 // [slug] folder name. Next.js reads whatever comes after /shop/ in the
 // URL and hands it to us as `slug`, then we look that product up in
 // products.ts.
 //
-// This version rebuilds the WooCommerce product page layout you had:
-// breadcrumb, variant selection with extra per-variant info, quantity
-// selector, meta row, tabs (description / specs / reviews), related
-// products, and a sticky mobile bottom bar.
+// Rebuilds the original WooCommerce product page layout: breadcrumb,
+// variant selection with extra per-variant info, quantity selector,
+// meta row, tabs (description / specs / reviews), related products,
+// and a sticky mobile bottom bar.
 
 "use client";
 
@@ -34,8 +36,6 @@ export default function ProductPage() {
   const product = products.find((p) => p.slug === slug);
   const { addItem } = useCart();
 
-  // null means "no variant chosen yet" — matches the WooCommerce behavior
-  // where price shows as a range until you pick one.
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<"description" | "specs" | "reviews">(
@@ -48,8 +48,6 @@ export default function ProductPage() {
   }
 
   const hasMultipleVariants = product.variants.length > 1;
-  // If there's only one variant, treat it as always "selected" — no need
-  // to make the user click a button for a choice that isn't really a choice.
   const selectedVariant = hasMultipleVariants
     ? selectedIndex !== null
       ? product.variants[selectedIndex]
@@ -68,7 +66,7 @@ export default function ProductPage() {
     .slice(0, 4);
 
   function handleAddToCart() {
-    if (!selectedVariant) return; // shouldn't happen since button is disabled, but just in case
+    if (!selectedVariant) return;
     addItem(
       {
         slug: product!.slug,
@@ -85,7 +83,6 @@ export default function ProductPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 pb-28 md:pb-10">
-      {/* Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-6">
         <Link href="/" className="hover:text-green-800">خانه</Link>
         {" / "}
@@ -97,11 +94,9 @@ export default function ProductPage() {
       </nav>
 
       <div className="grid md:grid-cols-2 gap-10">
-        {/* Text column */}
         <div>
           <h1 className="text-2xl font-bold mb-3">{product.name}</h1>
 
-          {/* Price: range if nothing selected yet, exact price + per-kg once a variant is chosen */}
           {product.soldOut ? (
             <span className="inline-block text-sm text-gray-400 border border-gray-300 rounded px-4 py-2 mb-4">
               تمام شده
@@ -130,7 +125,6 @@ export default function ProductPage() {
 
           {!product.soldOut && (
             <>
-              {/* Variant buttons */}
               {hasMultipleVariants && (
                 <div className="mb-2">
                   <div className="flex flex-wrap gap-2">
@@ -159,7 +153,6 @@ export default function ProductPage() {
                 </div>
               )}
 
-              {/* Extra info that only appears once a variant with that data is selected */}
               {selectedVariant?.brokenRicePercent !== undefined && (
                 <p className="text-sm text-gray-600 mt-2">
                   حدود {selectedVariant.brokenRicePercent} درصد وزنی برنج شکسته
@@ -183,7 +176,6 @@ export default function ProductPage() {
                 </p>
               )}
 
-              {/* Quantity + add to cart */}
               <div className="flex items-center gap-3 mt-6">
                 <div className="flex items-center border border-gray-300 rounded-lg">
                   <button
@@ -216,7 +208,6 @@ export default function ProductPage() {
             </>
           )}
 
-          {/* Meta row: SKU / category / brand */}
           {(product.sku || product.brand) && (
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 mt-6 pt-6 border-t border-gray-200">
               {product.sku && <span>شناسه محصول: {product.sku}</span>}
@@ -226,7 +217,6 @@ export default function ProductPage() {
           )}
         </div>
 
-        {/* Image column */}
         <img
           src={product.image}
           alt={product.name}
@@ -234,7 +224,6 @@ export default function ProductPage() {
         />
       </div>
 
-      {/* Tabs: description / additional info / reviews */}
       <div className="mt-12 border-t border-gray-200 pt-6">
         <div className="flex gap-6 border-b border-gray-200 mb-6">
           <button
@@ -344,7 +333,6 @@ export default function ProductPage() {
         )}
       </div>
 
-      {/* Related products */}
       {relatedProducts.length > 0 && (
         <div className="mt-14">
           <h2 className="text-xl font-bold mb-6">محصولات مرتبط</h2>
@@ -356,7 +344,6 @@ export default function ProductPage() {
         </div>
       )}
 
-      {/* Sticky mobile bottom bar — mirrors the WooCommerce sticky add-to-cart bar */}
       {!product.soldOut && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 z-30">
           <img src={product.image} alt={product.name} className="w-10 h-12 object-contain" />

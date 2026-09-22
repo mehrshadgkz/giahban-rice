@@ -1,6 +1,11 @@
-"use client";
+// Path: /app/components
+// File: Ticker.tsx
+// Version: 1.0.0
+//
 // "use client" needed — this component manipulates the DOM directly with
 // requestAnimationFrame and touch events, which only work in the browser.
+
+"use client";
 
 import { useEffect, useRef } from "react";
 
@@ -15,7 +20,6 @@ const tickerItems = [
 ];
 
 export default function Ticker() {
-  // A reference to the actual ticker DOM element, so we can measure and move it directly
   const tickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,7 +32,6 @@ export default function Ticker() {
     let currentSpeed = baseSpeed;
     const friction = 0.95;
 
-    // Half-width, since items are duplicated once for a seamless loop
     let halfWidth = ticker.scrollWidth / 2;
 
     function applyTransform() {
@@ -46,7 +49,6 @@ export default function Ticker() {
       animationFrameId = requestAnimationFrame(loop);
     }
 
-    // Recalculate on resize (debounced)
     let resizeTimeout: ReturnType<typeof setTimeout>;
     function handleResize() {
       clearTimeout(resizeTimeout);
@@ -57,7 +59,6 @@ export default function Ticker() {
     }
     window.addEventListener("resize", handleResize);
 
-    // Pause on hover (desktop)
     function handleMouseEnter() {
       paused = true;
     }
@@ -67,7 +68,6 @@ export default function Ticker() {
     ticker.addEventListener("mouseenter", handleMouseEnter);
     ticker.addEventListener("mouseleave", handleMouseLeave);
 
-    // Touch/drag support (mobile) with momentum
     let touchStartX = 0;
     let touchStartPosition = 0;
     let lastTouchX = 0;
@@ -115,8 +115,6 @@ export default function Ticker() {
 
     loop();
 
-    // Cleanup — removes all listeners and stops the animation loop when
-    // this component unmounts, preventing memory leaks
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
@@ -131,7 +129,6 @@ export default function Ticker() {
   return (
     <div className="w-full overflow-hidden bg-[#4F6F3A] py-2.5" dir="ltr">
       <div ref={tickerRef} className="flex items-center w-max touch-pan-y" style={{ direction: "ltr" }}>
-        {/* Items rendered twice back-to-back for the seamless infinite loop */}
         {[...tickerItems, ...tickerItems].map((item, index) => (
           <span
             key={index}

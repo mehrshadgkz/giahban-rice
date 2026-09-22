@@ -1,4 +1,6 @@
-// app/api/otp/send/route.ts
+// Path: /app/api/otp/send
+// File: route.ts
+// Version: 1.0.0
 //
 // Server-side API route — the ONLY place the Melipayamak token is used.
 //

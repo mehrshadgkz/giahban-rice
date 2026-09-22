@@ -1,3 +1,7 @@
+// Path: /app/components
+// File: BlogPreview.tsx
+// Version: 1.0.0
+//
 // Blog preview — shows 4 latest/popular posts on the homepage.
 // For now this uses placeholder data; later this will pull from your real blog posts
 // once the blog system exists (likely a simple database table of posts).

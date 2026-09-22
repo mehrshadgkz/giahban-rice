@@ -1,10 +1,10 @@
 // Path: /
 // File: postcss.config.mjs
-// Version: 1.0.0
+// Version: 1.0.1
 
 const config = {
   plugins: {
-    tailwindcss: {},
+    "@tailwindcss/postcss": {},
     autoprefixer: {},
   },
 };

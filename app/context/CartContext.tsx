@@ -1,4 +1,6 @@
-// app/context/CartContext.tsx
+// Path: /app/context
+// File: CartContext.tsx
+// Version: 1.0.0
 //
 // Shared cart state, available to any component in the app via useCart().
 // Saved to localStorage so the cart survives page refreshes.
@@ -34,7 +36,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load saved cart once, when the app first mounts in the browser
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -47,14 +48,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsLoaded(true);
   }, []);
 
-  // Save to localStorage every time the cart changes (but not on the initial empty load)
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     }
   }, [items, isLoaded]);
 
-  // quantity defaults to 1 so existing calls (like from ProductCard) still work
   function addItem(newItem: Omit<CartItem, "quantity">, quantity: number = 1) {
     setItems((current) => {
       const existing = current.find(
@@ -89,8 +88,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Empties the cart entirely — used after a checkout order is
-  // successfully submitted, so the next visit starts fresh.
   function clearCart() {
     setItems([]);
   }

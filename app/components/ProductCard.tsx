@@ -1,23 +1,27 @@
+// Path: /app/components
+// File: ProductCard.tsx
+// Version: 1.0.0
+//
+// Product card shown in grids (homepage featured products, shop listing,
+// related products). Displays image, name, price, and a variant toggle
+// when a product has more than one price option.
+
 "use client";
-// "use client" needed because this card has interactive state (the variant toggle buttons).
 
 import { useState } from "react";
 import Link from "next/link";
 
-// A single price option — could be "الک شده", "نیم دانه", "لاشه", etc.
 type Variant = {
   label: string;
   price: number;
 };
 
 type ProductCardProps = {
-  slug: string; // needed to link the image/name to the product's detail page at /shop/[slug]
+  slug: string;
   name: string;
   image: string;
   soldOut?: boolean;
   weightKg: number;
-  // One or more price variants. If there's only one, no toggle is shown —
-  // matches products like Shirudi/Raton that have a single fixed price.
   variants: Variant[];
 };
 
@@ -40,9 +44,6 @@ export default function ProductCard({
 
   return (
     <div className="border border-gray-200 rounded-xl p-4 flex flex-col items-center text-center hover:shadow-md transition">
-      {/* Only the image and name link to the product page — the toggle
-          buttons below stay as plain buttons, not inside this Link, so
-          clicking them changes the price shown here instead of navigating away. */}
       <Link href={`/shop/${slug}`} className="w-full flex flex-col items-center">
         <img src={image} alt={name} className="w-32 h-40 object-contain mb-3" />
         <h3 className="text-sm font-medium text-gray-800 mb-1 hover:text-green-800 transition">
@@ -63,7 +64,6 @@ export default function ProductCard({
             قیمت هر کیلوگرم: {formatToman(pricePerKg)} تومان
           </p>
 
-          {/* Only shown when there's more than one price option */}
           {hasToggle && (
             <div className="flex flex-wrap justify-center gap-2">
               {variants.map((variant, index) => (

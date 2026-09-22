@@ -1,8 +1,9 @@
-// app/components/OtpInput.tsx
+// Path: /app/components
+// File: OtpInput.tsx
+// Version: 1.0.0
 //
-// Segmented 6-box OTP entry. Same three behaviors as PhoneInput — see
-// comments there for the reasoning, especially around why corrections
-// no longer auto-advance.
+// Segmented 6-box OTP code entry. Same insert-on-gap vs overwrite-on-existing
+// behavior as PhoneInput — see comments there for the reasoning.
 
 "use client";
 

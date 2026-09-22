@@ -1,31 +1,25 @@
-// app/checkout/page.tsx
+// Path: /app/checkout
+// File: page.tsx
+// Version: 1.0.0
 //
 // Checkout page. Flow:
 // 1. Order summary from the cart.
 // 2. Phone → OTP verification (guest checkout, no login required — buying
-//    never requires a separate "login" step, matching the original spec).
+//    never requires a separate "login" step).
 // 3. Full address form → confirm order, writing a row into `orders`
-//    in Supabase with structured address fields (separate columns,
-//    not one combined text blob, so orders can be filtered/sorted by
-//    province/city later if needed).
+//    in Supabase with structured address fields.
 //
 // Validation behavior: on first visit, no field shows a red border or
 // asterisk. Only after clicking "تایید نهایی سفارش" do empty required
-// fields turn red AND show a "*" — as soon as a field is filled in, both
-// disappear again on the next render. This avoids scaring a first-time
-// visitor with a form that looks broken before they've typed anything.
+// fields turn red AND show a "*" — filling a field clears both on the
+// next render.
 //
-// "پلاک" (house/unit number) is required by default, since forgetting
-// it is a common real mistake — but some genuine addresses (rural,
-// certain village addresses) don't have one. A "پلاک ندارم" checkbox
-// lets the customer explicitly say so instead of being blocked or
-// leaving the field ambiguously blank; checking it disables the field
-// and stores "ندارد" in that order's unit_number column, so it's
-// distinguishable in the data from a field nobody looked at.
+// "پلاک" (house/unit number) is required by default, but a "پلاک ندارم"
+// checkbox lets a customer with a genuinely address-less home say so
+// explicitly, storing "ندارد" instead of blocking the order.
 //
 // Shipping method selection and payment (PayPing) are still deferred —
-// confirming an order just records it with status "pending" for now,
-// to be processed manually until payment integration is built.
+// confirming an order just records it with status "pending" for now.
 
 "use client";
 
@@ -296,14 +290,11 @@ export default function CheckoutPage() {
               <p className="text-sm text-gray-500 mb-5 text-center">
                 کد تایید پیامکی برای این شماره ارسال می‌شود. نیازی به ثبت‌نام یا ورود ندارید.
               </p>
-
               <PhoneInput
                 value={phoneDigits.slice(1)}
                 onChange={(nineDigits) => setPhoneDigits("9" + nineDigits)}
               />
-
               {error && <p className="text-red-600 text-sm mt-4 text-center">{error}</p>}
-
               <button
                 onClick={handleSendOtp}
                 disabled={isSending}
@@ -320,11 +311,8 @@ export default function CheckoutPage() {
               <p className="text-sm text-gray-500 mb-5 text-center">
                 کد ارسال شده به +98{phoneDigits} را وارد کنید.
               </p>
-
               <OtpInput value={otpCode} onChange={setOtpCode} />
-
               {error && <p className="text-red-600 text-sm mt-4 text-center">{error}</p>}
-
               <button
                 onClick={handleVerifyOtp}
                 disabled={isVerifying}
@@ -332,7 +320,6 @@ export default function CheckoutPage() {
               >
                 {isVerifying ? "در حال بررسی..." : "تایید کد"}
               </button>
-
               <div className="text-center text-sm">
                 {cooldown > 0 ? (
                   <span className="text-gray-400">

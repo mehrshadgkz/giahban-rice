@@ -1,14 +1,13 @@
+// Path: /app/components
+// File: Header.tsx
+// Version: 1.0.0
+
 "use client";
-// "use client" is required here because this component uses interactivity
-// (useState, onClick, scroll listeners, useCart) — Next.js needs to know
-// this runs in the browser, not just on the server.
 
 import { useState, useEffect } from "react";
 import { Menu, X, ShoppingBasket, User, ChevronDown } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
-// Temporary placeholder nav structure — later this could come from your
-// admin panel or a config file instead of being hardcoded here.
 const navLinks = [
   { label: "فروشگاه", href: "/shop" },
   { label: "بلاگ", href: "/blog" },
@@ -29,9 +28,6 @@ export default function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [mobileSubmenuOpen, setMobileSubmenuOpen] = useState(false);
 
-  // Real cart data from CartContext — this is what was missing before.
-  // Any component that calls useCart() shares the exact same state, so
-  // adding a product anywhere in the app updates this badge instantly.
   const { items, cartCount, cartTotal, updateQuantity, removeItem } = useCart();
 
   useEffect(() => {
@@ -152,7 +148,6 @@ export default function Header() {
         )}
       </header>
 
-      {/* Cart drawer — now shows real items instead of a hardcoded empty state */}
       {cartOpen && (
         <>
           <div
