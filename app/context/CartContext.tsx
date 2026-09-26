@@ -1,9 +1,12 @@
 // Path: /app/context
 // File: CartContext.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Shared cart state, available to any component in the app via useCart().
-// Saved to localStorage so the cart survives page refreshes.
+// v1.1.0: added weightKg to CartItem, so the checkout page can compute
+// real total shipping weight (e.g. a 5kg bag × 2 quantity = 10kg) instead
+// of incorrectly treating "quantity" as if it were kilograms. This
+// matters going forward since not every product will always be 5kg
+// (e.g. a future 1kg rice flour bag).
 
 "use client";
 
@@ -15,6 +18,7 @@ export type CartItem = {
   image: string;
   variantLabel: string;
   price: number;
+  weightKg: number;
   quantity: number;
 };
 
@@ -26,6 +30,7 @@ type CartContextType = {
   clearCart: () => void;
   cartCount: number;
   cartTotal: number;
+  cartTotalWeightKg: number;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -94,6 +99,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Real total weight in kg — each item's own weightKg × how many of it
+  // are in the cart, summed across every different item.
+  const cartTotalWeightKg = items.reduce(
+    (sum, item) => sum + item.weightKg * item.quantity,
+    0
+  );
 
   return (
     <CartContext.Provider
@@ -105,6 +116,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         cartCount,
         cartTotal,
+        cartTotalWeightKg,
       }}
     >
       {children}

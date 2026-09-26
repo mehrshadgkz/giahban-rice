@@ -1,18 +1,21 @@
 // Path: /app
 // File: page.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Homepage. Header and Footer are handled globally in layout.tsx, so
-// this file only needs the homepage-specific sections.
+// v1.1.0: switched from static data/products.ts to live Supabase fetch
+// via getFeaturedProducts(), so featured/in-stock products update
+// automatically as stock changes — no code edit or redeploy needed.
 
 import Hero from "./components/Hero";
 import ProductCard from "./components/ProductCard";
 import Ticker from "./components/Ticker";
 import CategoryBanner from "./components/CategoryBanner";
 import BlogPreview from "./components/BlogPreview";
-import { featuredProducts } from "./data/products";
+import { getFeaturedProducts } from "./lib/getProducts";
 
-export default function Home() {
+export default async function Home() {
+  const featuredProducts = await getFeaturedProducts();
+
   return (
     <main>
       <Hero />

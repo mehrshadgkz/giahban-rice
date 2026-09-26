@@ -1,25 +1,15 @@
 // Path: /app/checkout
 // File: page.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Checkout page. Flow:
-// 1. Order summary from the cart.
-// 2. Phone → OTP verification (guest checkout, no login required — buying
-//    never requires a separate "login" step).
-// 3. Full address form → confirm order, writing a row into `orders`
-//    in Supabase with structured address fields.
+// v1.1.0: added a shipping method selection step between the address
+// form and final confirmation. Once province/city are known, we fetch
+// available shipping options (respecting باربری's Tehran-only
+// restriction) and the customer picks one before confirming the order.
+// The order's total now includes the chosen shipping cost, and the
+// order row records which company/cost was selected.
 //
-// Validation behavior: on first visit, no field shows a red border or
-// asterisk. Only after clicking "تایید نهایی سفارش" do empty required
-// fields turn red AND show a "*" — filling a field clears both on the
-// next render.
-//
-// "پلاک" (house/unit number) is required by default, but a "پلاک ندارم"
-// checkbox lets a customer with a genuinely address-less home say so
-// explicitly, storing "ندارد" instead of blocking the order.
-//
-// Shipping method selection and payment (PayPing) are still deferred —
-// confirming an order just records it with status "pending" for now.
+// Everything else (phone → OTP → address) is unchanged from 1.0.0.
 
 "use client";
 
@@ -30,8 +20,9 @@ import { supabase } from "../lib/supabase";
 import PhoneInput from "../components/PhoneInput";
 import OtpInput from "../components/OtpInput";
 import { iranLocations, iranProvinces } from "../data/iranLocations";
+import { getAvailableShippingOptions, ShippingOption } from "../lib/shipping";
 
-type CheckoutStep = "phone" | "otp" | "details" | "confirmed";
+type CheckoutStep = "phone" | "otp" | "details" | "shipping" | "confirmed";
 
 function isValidIranianMobile(digits: string) {
   return /^9\d{9}$/.test(digits);
@@ -44,8 +35,12 @@ const countries = [
   { label: "قطر", value: "قطر", active: false },
 ];
 
+function formatToman(amount: number) {
+  return amount.toLocaleString("en-US");
+}
+
 export default function CheckoutPage() {
-  const { items, cartTotal, clearCart } = useCart();
+  const { items, cartTotal, cartTotalWeightKg, clearCart } = useCart();
 
   const [step, setStep] = useState<CheckoutStep>("phone");
   const [phoneDigits, setPhoneDigits] = useState("9");
@@ -72,6 +67,11 @@ export default function CheckoutPage() {
   const [orderError, setOrderError] = useState<string | null>(null);
 
   const [showValidation, setShowValidation] = useState(false);
+
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+  const [selectedShippingId, setSelectedShippingId] = useState<string | null>(null);
+  const [isLoadingShipping, setIsLoadingShipping] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
 
   const availableCities = province ? iranLocations[province] || [] : [];
 
@@ -160,7 +160,9 @@ export default function CheckoutPage() {
     }
   }
 
-  async function handleConfirmOrder() {
+  // Moves from the address form to the shipping step, fetching real
+  // options for this exact weight + destination from Supabase.
+  async function handleContinueToShipping() {
     setOrderError(null);
     setShowValidation(true);
 
@@ -188,6 +190,39 @@ export default function CheckoutPage() {
       return;
     }
 
+    setIsLoadingShipping(true);
+    setShippingError(null);
+    try {
+      const options = await getAvailableShippingOptions(cartTotalWeightKg, province, finalCity);
+      if (options.length === 0) {
+        setShippingError("متأسفانه روش ارسالی برای این مقصد یافت نشد.");
+      }
+      setShippingOptions(options);
+      setStep("shipping");
+    } catch (err) {
+      console.error("Failed to fetch shipping options:", err);
+      setShippingError("خطا در دریافت روش‌های ارسال. دوباره تلاش کنید.");
+    } finally {
+      setIsLoadingShipping(false);
+    }
+  }
+
+  async function handleConfirmOrder() {
+    setOrderError(null);
+
+    if (!selectedShippingId) {
+      setOrderError("لطفاً یک روش ارسال انتخاب کنید.");
+      return;
+    }
+
+    const finalCity = city === "__other__" ? customCity.trim() : city;
+    const selectedShipping = shippingOptions.find((o) => o.companyId === selectedShippingId);
+
+    if (!selectedShipping) {
+      setOrderError("روش ارسال انتخاب شده معتبر نیست. دوباره تلاش کنید.");
+      return;
+    }
+
     setIsSubmittingOrder(true);
     try {
       const { error: insertError } = await supabase.from("orders").insert({
@@ -198,7 +233,7 @@ export default function CheckoutPage() {
           price: item.price,
           quantity: item.quantity,
         })),
-        total_price: cartTotal,
+        total_price: cartTotal + selectedShipping.cost,
         first_name: firstName,
         last_name: lastName,
         country,
@@ -210,6 +245,8 @@ export default function CheckoutPage() {
         floor: floor || null,
         email: email || null,
         status: "pending",
+        shipping_company: selectedShipping.name,
+        shipping_cost: selectedShipping.cost,
       });
 
       if (insertError) {
@@ -273,12 +310,35 @@ export default function CheckoutPage() {
                 <span>
                   {item.name} ({item.variantLabel}) × {item.quantity}
                 </span>
-                <span>{(item.price * item.quantity).toLocaleString("en-US")}</span>
+                <span>{formatToman(item.price * item.quantity)}</span>
               </div>
             ))}
+            <div className="flex justify-between text-sm text-gray-500 pt-1">
+              <span>جمع محصولات</span>
+              <span>{formatToman(cartTotal)} تومان</span>
+            </div>
+            {step === "shipping" && selectedShippingId ? (
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>هزینه ارسال</span>
+                <span>
+                  {formatToman(
+                    shippingOptions.find((o) => o.companyId === selectedShippingId)?.cost ?? 0
+                  )}{" "}
+                  تومان
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between font-semibold pt-3 border-t border-gray-200">
               <span>مجموع</span>
-              <span>{cartTotal.toLocaleString("en-US")} تومان</span>
+              <span>
+                {formatToman(
+                  cartTotal +
+                    (selectedShippingId
+                      ? shippingOptions.find((o) => o.companyId === selectedShippingId)?.cost ?? 0
+                      : 0)
+                )}{" "}
+                تومان
+              </span>
             </div>
           </div>
         </div>
@@ -541,11 +601,76 @@ export default function CheckoutPage() {
               )}
 
               <button
+                onClick={handleContinueToShipping}
+                disabled={isLoadingShipping}
+                className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-300 transition text-white font-medium py-3 rounded-lg mt-5"
+              >
+                {isLoadingShipping ? "در حال بررسی روش‌های ارسال..." : "ادامه به روش ارسال"}
+              </button>
+            </div>
+          )}
+
+          {step === "shipping" && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">روش ارسال</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                یکی از روش‌های زیر را برای ارسال سفارش خود انتخاب کنید.
+              </p>
+
+              {shippingError && (
+                <p className="text-red-600 text-sm mb-4">{shippingError}</p>
+              )}
+
+              <div className="space-y-2">
+                {shippingOptions.map((option) => (
+                  <label
+                    key={option.companyId}
+                    className={`flex items-center justify-between border rounded-lg px-4 py-3 cursor-pointer transition ${
+                      selectedShippingId === option.companyId
+                        ? "border-green-700 bg-green-50"
+                        : "border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="shipping"
+                        checked={selectedShippingId === option.companyId}
+                        onChange={() => setSelectedShippingId(option.companyId)}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{option.name}</p>
+                        {option.deliveryDaysMin && option.deliveryDaysMax && (
+                          <p className="text-xs text-gray-500">
+                            تحویل طی {option.deliveryDaysMin} تا {option.deliveryDaysMax} روز کاری
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-sm font-semibold text-green-800">
+                      {formatToman(option.cost)} تومان
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {orderError && (
+                <p className="text-red-600 text-sm mt-4">{orderError}</p>
+              )}
+
+              <button
                 onClick={handleConfirmOrder}
-                disabled={isSubmittingOrder}
+                disabled={isSubmittingOrder || !selectedShippingId}
                 className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-300 transition text-white font-medium py-3 rounded-lg mt-5"
               >
                 {isSubmittingOrder ? "در حال ثبت سفارش..." : "تایید نهایی سفارش"}
+              </button>
+
+              <button
+                onClick={() => setStep("details")}
+                className="w-full text-sm text-gray-500 underline mt-3"
+              >
+                بازگشت به اطلاعات ارسال
               </button>
             </div>
           )}

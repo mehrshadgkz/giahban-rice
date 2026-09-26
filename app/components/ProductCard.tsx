@@ -1,10 +1,13 @@
 // Path: /app/components
 // File: ProductCard.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Product card shown in grids (homepage featured products, shop listing,
-// related products). Displays image, name, price, and a variant toggle
-// when a product has more than one price option.
+// v1.1.0: variants now carry a stockCount instead of being either fully
+// available or fully removed. A product only shows the overall
+// "تمام شده" (sold out) badge when every variant is out of stock —
+// otherwise, individual variant buttons that are out of stock are shown
+// disabled with their own small "ناموجود" label, so a customer can
+// still see and pick a variant that IS in stock.
 
 "use client";
 
@@ -14,13 +17,14 @@ import Link from "next/link";
 type Variant = {
   label: string;
   price: number;
+  stockCount: number;
 };
 
 type ProductCardProps = {
   slug: string;
   name: string;
   image: string;
-  soldOut?: boolean;
+  soldOut: boolean;
   weightKg: number;
   variants: Variant[];
 };
@@ -33,14 +37,19 @@ export default function ProductCard({
   slug,
   name,
   image,
-  soldOut = false,
+  soldOut,
   weightKg,
   variants,
 }: ProductCardProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  // Default selection: the first variant that's actually in stock, if any.
+  const firstInStockIndex = variants.findIndex((v) => v.stockCount > 0);
+  const [selectedIndex, setSelectedIndex] = useState(
+    firstInStockIndex >= 0 ? firstInStockIndex : 0
+  );
+
   const hasToggle = variants.length > 1;
-  const currentPrice = variants[selectedIndex].price;
-  const pricePerKg = Math.round(currentPrice / weightKg);
+  const selectedVariant = variants[selectedIndex];
+  const pricePerKg = Math.round(selectedVariant.price / weightKg);
 
   return (
     <div className="border border-gray-200 rounded-xl p-4 flex flex-col items-center text-center hover:shadow-md transition">
@@ -58,7 +67,7 @@ export default function ProductCard({
       ) : (
         <>
           <p className="text-green-800 font-semibold text-sm mb-1">
-            {formatToman(currentPrice)} تومان
+            {formatToman(selectedVariant.price)} تومان
           </p>
           <p className="text-xs text-gray-500 mb-3">
             قیمت هر کیلوگرم: {formatToman(pricePerKg)} تومان
@@ -66,19 +75,25 @@ export default function ProductCard({
 
           {hasToggle && (
             <div className="flex flex-wrap justify-center gap-2">
-              {variants.map((variant, index) => (
-                <button
-                  key={variant.label}
-                  onClick={() => setSelectedIndex(index)}
-                  className={`text-xs px-3 py-1.5 rounded-md border transition ${
-                    selectedIndex === index
-                      ? "bg-green-800 text-white border-green-800"
-                      : "border-gray-300 text-gray-600 hover:border-green-800"
-                  }`}
-                >
-                  {variant.label}
-                </button>
-              ))}
+              {variants.map((variant, index) => {
+                const isOutOfStock = variant.stockCount <= 0;
+                return (
+                  <button
+                    key={variant.label}
+                    onClick={() => !isOutOfStock && setSelectedIndex(index)}
+                    disabled={isOutOfStock}
+                    className={`text-xs px-3 py-1.5 rounded-md border transition ${
+                      isOutOfStock
+                        ? "border-gray-200 text-gray-300 cursor-not-allowed line-through"
+                        : selectedIndex === index
+                        ? "bg-green-800 text-white border-green-800"
+                        : "border-gray-300 text-gray-600 hover:border-green-800"
+                    }`}
+                  >
+                    {variant.label}
+                  </button>
+                );
+              })}
             </div>
           )}
         </>

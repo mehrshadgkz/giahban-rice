@@ -40,6 +40,7 @@ Read this file first. Then ask the user to paste the CURRENT version of any file
 8. This project is guest-checkout-first: buying never requires a separate "login" step. Entering a phone number at checkout either matches an existing customer or silently creates a new one — this is a firm product decision, not an implementation detail to reconsider.
 
 ## 5. Folder map
+```
 app/
 layout.tsx, page.tsx              main layout and home page
 globals.css                        Tailwind base styles (must live in /app, not root)
@@ -66,6 +67,7 @@ lib/supabase.ts                   Supabase client connection
 public/                             images: about, blog, categories, homepage, products
 .env.local                          secret keys (NOT in git, never share)
 .gitignore                          excludes node_modules, .next, .env*, etc.
+```
 ## 6. Database (Supabase) tables
 
 - `customers` — id, phone, placeholder_email, name, created_at. Created automatically on first successful OTP verification (placeholder email format: `09XXXXXXXXX@giahban-customer.local`).

@@ -1,13 +1,12 @@
 // Path: /app/shop
 // File: page.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// The shop listing page — shows all products, filterable by category
-// via the URL (e.g. /shop?category=rice), matching the links from the
-// homepage CategoryBanners.
+// v1.1.0: switched from static data/products.ts to live Supabase fetch
+// via getAllProducts().
 
 import ProductCard from "../components/ProductCard";
-import { products } from "../data/products";
+import { getAllProducts } from "../lib/getProducts";
 import Link from "next/link";
 
 const categories = [
@@ -23,10 +22,11 @@ export default async function ShopPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
+  const allProducts = await getAllProducts();
 
   const filteredProducts = category
-    ? products.filter((p) => p.category === category)
-    : products;
+    ? allProducts.filter((p) => p.category === category)
+    : allProducts;
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-12">
