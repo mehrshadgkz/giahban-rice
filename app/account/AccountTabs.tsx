@@ -1,14 +1,17 @@
 // Path: /app/account
 // File: AccountTabs.tsx
-// Version: 1.1.0
+// Version: 1.2.0
 //
-// v1.1.0: حساب کاربری tab now shows the real SettingsTab component
-// instead of a placeholder. The other four tabs are still placeholders.
+// v1.2.0: خروج از حساب and آدرس‌ها now show their real components
+// instead of placeholders. Only سفارش‌ها and دیدگاه‌ها و پرسش‌ها
+// remain placeholders.
 
 "use client";
 
 import { useState } from "react";
 import SettingsTab from "./SettingsTab";
+import AddressesTab from "./AddressesTab";
+import LogoutTab from "./LogoutTab";
 
 type Tab = "orders" | "reviews" | "addresses" | "settings" | "logout";
 
@@ -47,9 +50,9 @@ export default function AccountTabs() {
       <div className="md:col-span-3">
         {activeTab === "orders" && <p className="text-gray-500">سفارش‌ها — به زودی</p>}
         {activeTab === "reviews" && <p className="text-gray-500">دیدگاه‌ها و پرسش‌ها — به زودی</p>}
-        {activeTab === "addresses" && <p className="text-gray-500">آدرس‌ها — به زودی</p>}
+        {activeTab === "addresses" && <AddressesTab />}
         {activeTab === "settings" && <SettingsTab />}
-        {activeTab === "logout" && <p className="text-gray-500">خروج از حساب — به زودی</p>}
+        {activeTab === "logout" && <LogoutTab />}
       </div>
     </div>
   );

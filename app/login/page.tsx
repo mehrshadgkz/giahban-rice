@@ -1,22 +1,22 @@
 // Path: /app/login
 // File: page.tsx
-// Version: 1.0.0
+// Version: 1.0.1
 //
-// Standalone sign-in page — same phone/OTP flow as checkout, reached
-// by clicking the account icon while signed out. Once verified,
-// redirects straight to /account.
+// v1.0.1: switched from router.push to a full page navigation
+// (window.location.href) after verification. router.push was
+// occasionally reusing a stale cached version of /account rendered
+// from before sign-in (still showing "not signed in"), sending the
+// customer back to /login in a loop. A full navigation guarantees the
+// browser sends the freshly-set session cookie on a brand new request.
 
 "use client";
 
-import { useRouter } from "next/navigation";
 import PhoneOtpFlow from "../components/PhoneOtpFlow";
 
 export default function LoginPage() {
-  const router = useRouter();
-
   return (
     <main className="max-w-md mx-auto px-6 py-16">
-      <PhoneOtpFlow onVerified={() => router.push("/account")} />
+      <PhoneOtpFlow onVerified={() => (window.location.href = "/account")} />
     </main>
   );
 }
