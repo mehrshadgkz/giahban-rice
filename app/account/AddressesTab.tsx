@@ -10,7 +10,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { iranLocations, iranProvinces } from "../../data/iranLocations";
+import { iranLocations, iranProvinces } from "../data/iranLocations";
 
 type Address = {
   slot: number;
