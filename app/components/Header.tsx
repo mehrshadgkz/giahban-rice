@@ -1,6 +1,11 @@
 // Path: /app/components
 // File: Header.tsx
-// Version: 1.0.0
+// Version: 1.1.0
+//
+// v1.1.0: account icon now checks real sign-in status via /api/auth/me.
+// Signed out → clicking it goes through the same phone/OTP flow as
+// checkout (a shared component, built next). Signed in → green circular
+// background, and clicking it goes straight to /account.
 
 "use client";
 
@@ -27,6 +32,8 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [mobileSubmenuOpen, setMobileSubmenuOpen] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const { items, cartCount, cartTotal, updateQuantity, removeItem } = useCart();
 
@@ -37,6 +44,19 @@ export default function Header() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Checks sign-in status once when the Header first mounts. Every page
+  // that includes the Header (which is all of them, via layout.tsx)
+  // will show the correct account icon state on load.
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        setIsSignedIn(data.signedIn);
+        setAuthChecked(true);
+      })
+      .catch(() => setAuthChecked(true));
   }, []);
 
   return (
@@ -94,10 +114,18 @@ export default function Header() {
               )}
             </button>
 
+            {/* Signed in → /account with a green circular background.
+                Signed out → /login (the shared phone/OTP flow). Both
+                icons stay hidden-neutral until the auth check finishes,
+                to avoid a flash of the wrong state on page load. */}
             <a
-              href="/account"
+              href={authChecked ? (isSignedIn ? "/account" : "/login") : "#"}
               aria-label="حساب کاربری"
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-green-50 transition"
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition ${
+                isSignedIn
+                  ? "bg-green-700 text-white hover:bg-green-800"
+                  : "hover:bg-green-50"
+              }`}
             >
               <User size={22} />
             </a>

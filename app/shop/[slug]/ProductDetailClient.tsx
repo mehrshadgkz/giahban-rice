@@ -1,6 +1,9 @@
 // Path: /app/shop/[slug]
 // File: ProductDetailClient.tsx
-// Version: 1.0.0
+// Version: 1.0.1
+//
+// v1.0.1: removed an unused `firstInStockIndex` variable left over from
+// an earlier draft — no behavior change, just dead code cleanup.
 //
 // The interactive half of the product detail page: variant selection,
 // quantity, description/specs/reviews tabs, add-to-cart, and the sticky
@@ -28,7 +31,6 @@ export default function ProductDetailClient({
 }) {
   const { addItem } = useCart();
 
-  const firstInStockIndex = product.variants.findIndex((v) => v.stockCount > 0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
     product.variants.length === 1 ? 0 : null
   );

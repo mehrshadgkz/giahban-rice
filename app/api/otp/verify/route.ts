@@ -1,16 +1,17 @@
 // Path: /app/api/otp/verify
 // File: route.ts
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Checks the submitted code against the row stored in Supabase's
-// otp_codes table (previously an in-memory Map — see send/route.ts
-// comments for why that broke on restarts and on Vercel specifically).
-//
-// On success, this also creates or matches a customer row in Supabase
-// by phone number — buying never requires a separate "login" step.
+// v1.1.0: on successful verification, also creates a 7-day session and
+// sets it as an httpOnly cookie — this is what makes checkout's OTP
+// step double as "signing in" for future visits, per the account
+// system spec. httpOnly means client-side JavaScript can never read
+// this cookie (only the browser and our server can), which protects
+// it from certain attacks even if malicious code somehow ran on the page.
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase";
+import { createSession, SESSION_COOKIE_NAME } from "../../../lib/session";
 
 export async function POST(request: NextRequest) {
   const { phone, code } = await request.json();
@@ -41,8 +42,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "کد وارد شده صحیح نیست." }, { status: 400 });
   }
 
-  // One-time use — delete the row after successful verification, so the
-  // same code can't be reused for a second order.
   const { error: deleteError } = await supabase
     .from("otp_codes")
     .delete()
@@ -50,11 +49,8 @@ export async function POST(request: NextRequest) {
 
   if (deleteError) {
     console.error("Supabase otp_codes delete error:", deleteError);
-    // Not fatal to the customer's flow — log it but continue, since the
-    // verification itself already succeeded.
   }
 
-  // Check if this phone number already has a customer row.
   const { data: existingCustomer, error: customerLookupError } = await supabase
     .from("customers")
     .select("id")
@@ -66,18 +62,53 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "خطا در بررسی حساب کاربری." }, { status: 500 });
   }
 
-  if (!existingCustomer) {
-    const localPhone = phone.replace("+98", "0");
-    const { error: insertError } = await supabase.from("customers").insert({
-      phone,
-      placeholder_email: `${localPhone}@giahban-customer.local`,
-    });
+  let customerId: string;
 
-    if (insertError) {
+  if (existingCustomer) {
+    customerId = existingCustomer.id;
+  } else {
+    const localPhone = phone.replace("+98", "0");
+    const { data: newCustomer, error: insertError } = await supabase
+      .from("customers")
+      .insert({
+        phone,
+        placeholder_email: `${localPhone}@giahban-customer.local`,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !newCustomer) {
       console.error("Supabase customers insert error:", insertError);
       return NextResponse.json({ error: "خطا در ایجاد حساب کاربری." }, { status: 500 });
     }
+
+    customerId = newCustomer.id;
   }
 
-  return NextResponse.json({ success: true });
+  const sessionToken = await createSession(customerId);
+
+  if (!sessionToken) {
+    // Verification itself succeeded, so we don't fail the whole request —
+    // but log this, since something's wrong with session creation.
+    console.error("OTP verified but session creation failed for customer:", customerId);
+    return NextResponse.json({ success: true });
+  }
+
+  const response = NextResponse.json({ success: true });
+
+  // httpOnly: JavaScript can't read this cookie at all (only sent
+  // automatically by the browser on requests to this site).
+  // secure: only sent over HTTPS — Vercel serves everything over HTTPS,
+  // so this is safe to always set.
+  // sameSite: "lax" is the standard safe default, prevents this cookie
+  // being sent on cross-site requests.
+  response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60, // 7 days, in seconds
+    path: "/",
+  });
+
+  return response;
 }
