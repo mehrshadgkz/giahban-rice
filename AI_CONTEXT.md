@@ -40,6 +40,32 @@ Read this file first. Then ask the user to paste the CURRENT version of any file
 8. This project is guest-checkout-first: buying never requires a separate "login" step. Entering a phone number at checkout either matches an existing customer or silently creates a new one — this is a firm product decision, not an implementation detail to reconsider.
 
 ## 5. Folder map
+app/
+layout.tsx, page.tsx              main layout and home page
+globals.css                        Tailwind base styles (must live in /app, not root)
+api/otp/send/route.ts             sends the OTP code via Melipayamak, stores pending code in Supabase
+api/otp/verify/route.ts           checks the OTP code, creates/matches customer in Supabase
+checkout/page.tsx                 checkout page (phone → OTP → address form → order)
+shop/page.tsx                     shop list, filterable by category via URL
+shop/[slug]/page.tsx              single product detail page
+components/
+BlogPreview.tsx                  homepage blog post previews (placeholder data)
+CategoryBanner.tsx               homepage category links
+Footer.tsx                       site footer, Enamad trust badge placeholder
+Header.tsx                       nav, cart drawer, mobile menu
+Hero.tsx                         homepage hero section
+OtpInput.tsx                     6-box segmented OTP code entry
+PhoneInput.tsx                   13-box segmented Iranian phone number entry
+ProductCard.tsx                  product card used in grids across the site
+Ticker.tsx                       scrolling announcement bar (custom drag/momentum logic)
+context/CartContext.tsx           shopping cart state (localStorage-backed)
+data/
+iranLocations.ts                 all 31 provinces + major cities per province
+products.ts                      product catalog (prices, stock, specs)
+lib/supabase.ts                   Supabase client connection
+public/                             images: about, blog, categories, homepage, products
+.env.local                          secret keys (NOT in git, never share)
+.gitignore                          excludes node_modules, .next, .env*, etc.
 ## 6. Database (Supabase) tables
 
 - `customers` — id, phone, placeholder_email, name, created_at. Created automatically on first successful OTP verification (placeholder email format: `09XXXXXXXXX@giahban-customer.local`).
