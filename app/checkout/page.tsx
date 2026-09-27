@@ -228,6 +228,7 @@ export default function CheckoutPage() {
       const { error: insertError } = await supabase.from("orders").insert({
         customer_phone: `+98${phoneDigits}`,
         items: items.map((item) => ({
+          slug: item.slug,
           name: item.name,
           variant: item.variantLabel,
           price: item.price,

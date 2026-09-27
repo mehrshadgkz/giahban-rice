@@ -1,9 +1,9 @@
 // Path: /app/shop/[slug]
 // File: ProductDetailClient.tsx
-// Version: 1.0.1
+// Version: 1.1.0
 //
-// v1.0.1: removed an unused `firstInStockIndex` variable left over from
-// an earlier draft — no behavior change, just dead code cleanup.
+// v1.1.0: "reviews" tab now shows the real ProductReviewsAndQuestions
+// component (star-rated reviews + Q&A) instead of a placeholder.
 //
 // The interactive half of the product detail page: variant selection,
 // quantity, description/specs/reviews tabs, add-to-cart, and the sticky
@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { Product } from "../../lib/getProducts";
 import { useCart } from "../../context/CartContext";
+import ProductReviewsAndQuestions from "./ProductReviewsAndQuestions";
 
 function formatToman(amount: number) {
   return amount.toLocaleString("en-US");
@@ -248,7 +249,7 @@ export default function ProductDetailClient({
                 : "text-gray-500"
             }`}
           >
-            نظرات (۰)
+            نظرات
           </button>
         </div>
 
@@ -321,7 +322,7 @@ export default function ProductDetailClient({
         )}
 
         {activeTab === "reviews" && (
-          <p className="text-gray-500 text-sm">هنوز دیدگاهی ثبت نشده است.</p>
+          <ProductReviewsAndQuestions productSlug={product.slug} productName={product.name} />
         )}
       </div>
 
