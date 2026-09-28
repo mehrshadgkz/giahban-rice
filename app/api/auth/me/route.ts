@@ -1,18 +1,20 @@
 // Path: /app/api/auth/me
 // File: route.ts
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Checks whether the current visitor has a valid session cookie, and if
-// so, returns their basic info (phone number, display name preference).
-// Called by the Header on every page load to decide whether to show
-// the signed-in or signed-out account icon state.
+// v1.1.0: now also returns the customer's id, first/last name, and
+// email, so checkout can skip the phone/OTP step for signed-in
+// customers and pre-fill their details. Uses select("*") so a missing
+// column can never break the "am I signed in?" check.
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabase } from "../../../lib/supabase";
 import { getCustomerIdFromSessionToken, SESSION_COOKIE_NAME } from "../../../lib/session";
 
-export async function GET(request: NextRequest) {
+export const dynamic = "force-dynamic";
+
+export async function GET() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   const { data: customer, error } = await supabase
     .from("customers")
-    .select("phone, name")
+    .select("*")
     .eq("id", customerId)
     .maybeSingle();
 
@@ -38,7 +40,10 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     signedIn: true,
+    id: customer.id,
     phone: customer.phone,
-    name: customer.name,
+    firstName: customer.first_name ?? null,
+    lastName: customer.last_name ?? null,
+    email: customer.email ?? null,
   });
 }

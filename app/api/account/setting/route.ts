@@ -1,16 +1,18 @@
 // Path: /app/api/account/settings
 // File: route.ts
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// GET: returns the signed-in customer's editable settings (name, email,
-// iban, display name preference) plus their read-only phone number.
-// PATCH: updates the editable fields. Phone is never accepted here —
-// it's the account's permanent identity, tied to OTP verification.
+// v1.1.0: first name and last name are now separate fields. The old
+// combined "name" column is still kept up to date for compatibility.
+// Phone is never accepted here, since it's the account's permanent
+// identity tied to OTP verification.
 
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { supabase } from "../../../lib/supabase";
 import { getCustomerIdFromSessionToken, SESSION_COOKIE_NAME } from "../../../lib/session";
+
+export const dynamic = "force-dynamic";
 
 async function getSignedInCustomerId(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -28,20 +30,32 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("customers")
-    .select("phone, name, email, iban, display_name_preference")
+    .select("*")
     .eq("id", customerId)
     .maybeSingle();
 
   if (error || !data) {
+    console.error("Failed to load account settings:", error);
     return NextResponse.json({ error: "خطا در دریافت اطلاعات حساب." }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({
+    phone: data.phone,
+    first_name: data.first_name ?? "",
+    last_name: data.last_name ?? "",
+    email: data.email ?? "",
+    iban: data.iban ?? "",
+    display_name_preference: data.display_name_preference ?? "first_name",
+  });
 }
 
 // Iranian IBAN shape: "IR" followed by exactly 24 digits.
 function isValidIban(iban: string) {
   return /^IR\d{24}$/.test(iban);
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export async function PATCH(request: NextRequest) {
@@ -51,7 +65,11 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "ابتدا وارد حساب کاربری خود شوید." }, { status: 401 });
   }
 
-  const { name, email, iban, display_name_preference } = await request.json();
+  const { first_name, last_name, email, iban, display_name_preference } = await request.json();
+
+  if (email && !isValidEmail(email)) {
+    return NextResponse.json({ error: "ایمیل واردشده معتبر نیست." }, { status: 400 });
+  }
 
   if (iban && !isValidIban(iban)) {
     return NextResponse.json(
@@ -60,10 +78,15 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const first = (first_name || "").trim();
+  const last = (last_name || "").trim();
+
   const { error } = await supabase
     .from("customers")
     .update({
-      name: name || null,
+      first_name: first || null,
+      last_name: last || null,
+      name: [first, last].filter(Boolean).join(" ") || null,
       email: email || null,
       iban: iban || null,
       display_name_preference: display_name_preference || "first_name",

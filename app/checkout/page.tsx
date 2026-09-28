@@ -1,15 +1,20 @@
 // Path: /app/checkout
 // File: page.tsx
-// Version: 1.1.0
+// Version: 1.2.0
 //
-// v1.1.0: added a shipping method selection step between the address
-// form and final confirmation. Once province/city are known, we fetch
-// available shipping options (respecting باربری's Tehran-only
-// restriction) and the customer picks one before confirming the order.
-// The order's total now includes the chosen shipping cost, and the
-// order row records which company/cost was selected.
+// v1.2.0:
+// - Checks for an existing login session first. A signed-in customer
+//   skips the phone/OTP step and goes straight to the address form,
+//   pre-filled with their name and email from their account.
+// - A signed-out customer verifies through the shared PhoneOtpFlow
+//   component (the same one used by /login), replacing this file's old
+//   duplicated phone/OTP code.
+// - New orders now record customer_id, so they show up in
+//   حساب کاربری > سفارش‌ها. Status starts as "awaiting_payment",
+//   one of the real statuses the orders list understands.
 //
-// Everything else (phone → OTP → address) is unchanged from 1.0.0.
+// Flow: (session check) → phone/OTP if signed out → address form →
+// shipping method → confirmed. Payment (PayPing) is still deferred.
 
 "use client";
 
@@ -17,16 +22,19 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import { supabase } from "../lib/supabase";
-import PhoneInput from "../components/PhoneInput";
-import OtpInput from "../components/OtpInput";
+import PhoneOtpFlow from "../components/PhoneOtpFlow";
 import { iranLocations, iranProvinces } from "../data/iranLocations";
 import { getAvailableShippingOptions, ShippingOption } from "../lib/shipping";
 
-type CheckoutStep = "phone" | "otp" | "details" | "shipping" | "confirmed";
+type CheckoutStep = "loading" | "phone" | "details" | "shipping" | "confirmed";
 
-function isValidIranianMobile(digits: string) {
-  return /^9\d{9}$/.test(digits);
-}
+type AccountInfo = {
+  id: string;
+  phone: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+};
 
 const countries = [
   { label: "ایران", value: "ایران", active: true },
@@ -42,13 +50,9 @@ function formatToman(amount: number) {
 export default function CheckoutPage() {
   const { items, cartTotal, cartTotalWeightKg, clearCart } = useCart();
 
-  const [step, setStep] = useState<CheckoutStep>("phone");
-  const [phoneDigits, setPhoneDigits] = useState("9");
-  const [otpCode, setOtpCode] = useState("");
-  const [cooldown, setCooldown] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [step, setStep] = useState<CheckoutStep>("loading");
+  const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -65,7 +69,6 @@ export default function CheckoutPage() {
 
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-
   const [showValidation, setShowValidation] = useState(false);
 
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
@@ -74,20 +77,56 @@ export default function CheckoutPage() {
   const [shippingError, setShippingError] = useState<string | null>(null);
 
   const availableCities = province ? iranLocations[province] || [] : [];
+  const selectedShipping = shippingOptions.find((o) => o.companyId === selectedShippingId);
+
+  // Stores the signed-in customer and pre-fills the form with their
+  // account details, without overwriting anything already typed.
+  function applyAccount(data: AccountInfo) {
+    setAccount(data);
+    setFirstName((prev) => prev || data.firstName || "");
+    setLastName((prev) => prev || data.lastName || "");
+    setEmail((prev) => prev || data.email || "");
+  }
+
+  // On page load: already signed in? Skip straight to the address form.
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.signedIn) {
+          applyAccount(data);
+          setStep("details");
+        } else {
+          setStep("phone");
+        }
+      })
+      .catch(() => setStep("phone"));
+  }, []);
+
+  // Called by PhoneOtpFlow after a successful code check. The server
+  // has just set the session cookie, so we read the account back.
+  async function handleVerified() {
+    setVerifyError(null);
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+
+      if (data.signedIn) {
+        applyAccount(data);
+        setStep("details");
+        return;
+      }
+    } catch {
+      // handled below
+    }
+    setVerifyError("تایید شماره انجام شد اما ورود به حساب ناموفق بود. صفحه را دوباره بارگذاری کنید.");
+  }
 
   function handleProvinceChange(newProvince: string) {
     setProvince(newProvince);
     setCity("");
     setCustomCity("");
   }
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => {
-      setCooldown((c) => (c > 0 ? c - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
 
   function fieldErrorClass(isEmpty: boolean) {
     return showValidation && isEmpty ? "border-red-500" : "border-gray-300";
@@ -97,71 +136,6 @@ export default function CheckoutPage() {
     return showValidation && isEmpty ? <span className="text-red-500"> *</span> : null;
   }
 
-  async function handleSendOtp() {
-    setError(null);
-
-    if (!isValidIranianMobile(phoneDigits)) {
-      setError("شماره موبایل را کامل وارد کنید.");
-      return;
-    }
-
-    setIsSending(true);
-    try {
-      const res = await fetch("/api/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: `+98${phoneDigits}` }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "ارسال کد با خطا مواجه شد. دوباره تلاش کنید.");
-        return;
-      }
-
-      setStep("otp");
-      setCooldown(120);
-    } catch {
-      setError("خطا در برقراری ارتباط. اتصال اینترنت را بررسی کنید.");
-    } finally {
-      setIsSending(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    setError(null);
-
-    if (otpCode.length < 6) {
-      setError("کد ۶ رقمی را کامل وارد کنید.");
-      return;
-    }
-
-    setIsVerifying(true);
-    try {
-      const res = await fetch("/api/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: `+98${phoneDigits}`, code: otpCode }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "کد وارد شده صحیح نیست.");
-        return;
-      }
-
-      setStep("details");
-    } catch {
-      setError("خطا در برقراری ارتباط. اتصال اینترنت را بررسی کنید.");
-    } finally {
-      setIsVerifying(false);
-    }
-  }
-
-  // Moves from the address form to the shipping step, fetching real
-  // options for this exact weight + destination from Supabase.
   async function handleContinueToShipping() {
     setOrderError(null);
     setShowValidation(true);
@@ -198,6 +172,7 @@ export default function CheckoutPage() {
         setShippingError("متأسفانه روش ارسالی برای این مقصد یافت نشد.");
       }
       setShippingOptions(options);
+      setSelectedShippingId(null);
       setStep("shipping");
     } catch (err) {
       console.error("Failed to fetch shipping options:", err);
@@ -210,23 +185,23 @@ export default function CheckoutPage() {
   async function handleConfirmOrder() {
     setOrderError(null);
 
-    if (!selectedShippingId) {
+    if (!account) {
+      setOrderError("ابتدا وارد حساب کاربری خود شوید.");
+      return;
+    }
+
+    if (!selectedShipping) {
       setOrderError("لطفاً یک روش ارسال انتخاب کنید.");
       return;
     }
 
     const finalCity = city === "__other__" ? customCity.trim() : city;
-    const selectedShipping = shippingOptions.find((o) => o.companyId === selectedShippingId);
-
-    if (!selectedShipping) {
-      setOrderError("روش ارسال انتخاب شده معتبر نیست. دوباره تلاش کنید.");
-      return;
-    }
 
     setIsSubmittingOrder(true);
     try {
       const { error: insertError } = await supabase.from("orders").insert({
-        customer_phone: `+98${phoneDigits}`,
+        customer_phone: account.phone,
+        customer_id: account.id,
         items: items.map((item) => ({
           slug: item.slug,
           name: item.name,
@@ -245,7 +220,7 @@ export default function CheckoutPage() {
         unit_number: noUnitNumber ? "ندارد" : unitNumber,
         floor: floor || null,
         email: email || null,
-        status: "pending",
+        status: "awaiting_payment",
         shipping_company: selectedShipping.name,
         shipping_cost: selectedShipping.cost,
       });
@@ -274,12 +249,20 @@ export default function CheckoutPage() {
         <p className="text-gray-600 mb-8">
           سفارش شما با موفقیت ثبت شد. برای هماهنگی ارسال با شما تماس گرفته خواهد شد.
         </p>
-        <Link
-          href="/shop"
-          className="inline-block bg-green-700 hover:bg-green-800 transition text-white font-medium px-8 py-3 rounded-lg"
-        >
-          بازگشت به فروشگاه
-        </Link>
+        <div className="flex justify-center gap-4">
+          <Link
+            href="/account"
+            className="inline-block border border-green-700 text-green-800 hover:bg-green-50 transition font-medium px-8 py-3 rounded-lg"
+          >
+            مشاهده سفارش‌ها
+          </Link>
+          <Link
+            href="/shop"
+            className="inline-block bg-green-700 hover:bg-green-800 transition text-white font-medium px-8 py-3 rounded-lg"
+          >
+            بازگشت به فروشگاه
+          </Link>
+        </div>
       </main>
     );
   }
@@ -291,6 +274,14 @@ export default function CheckoutPage() {
         <Link href="/shop" className="text-green-800 underline">
           مشاهده فروشگاه
         </Link>
+      </main>
+    );
+  }
+
+  if (step === "loading") {
+    return (
+      <main className="max-w-2xl mx-auto px-6 py-16 text-center text-gray-500">
+        در حال بارگذاری...
       </main>
     );
   }
@@ -318,28 +309,15 @@ export default function CheckoutPage() {
               <span>جمع محصولات</span>
               <span>{formatToman(cartTotal)} تومان</span>
             </div>
-            {step === "shipping" && selectedShippingId ? (
+            {selectedShipping && (
               <div className="flex justify-between text-sm text-gray-500">
                 <span>هزینه ارسال</span>
-                <span>
-                  {formatToman(
-                    shippingOptions.find((o) => o.companyId === selectedShippingId)?.cost ?? 0
-                  )}{" "}
-                  تومان
-                </span>
+                <span>{formatToman(selectedShipping.cost)} تومان</span>
               </div>
-            ) : null}
+            )}
             <div className="flex justify-between font-semibold pt-3 border-t border-gray-200">
               <span>مجموع</span>
-              <span>
-                {formatToman(
-                  cartTotal +
-                    (selectedShippingId
-                      ? shippingOptions.find((o) => o.companyId === selectedShippingId)?.cost ?? 0
-                      : 0)
-                )}{" "}
-                تومان
-              </span>
+              <span>{formatToman(cartTotal + (selectedShipping?.cost ?? 0))} تومان</span>
             </div>
           </div>
         </div>
@@ -347,51 +325,10 @@ export default function CheckoutPage() {
         <div className="order-1 md:order-2">
           {step === "phone" && (
             <div>
-              <h2 className="text-lg font-semibold mb-2 text-center">شماره موبایل</h2>
-              <p className="text-sm text-gray-500 mb-5 text-center">
-                کد تایید پیامکی برای این شماره ارسال می‌شود. نیازی به ثبت‌نام یا ورود ندارید.
-              </p>
-              <PhoneInput
-                value={phoneDigits.slice(1)}
-                onChange={(nineDigits) => setPhoneDigits("9" + nineDigits)}
-              />
-              {error && <p className="text-red-600 text-sm mt-4 text-center">{error}</p>}
-              <button
-                onClick={handleSendOtp}
-                disabled={isSending}
-                className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-300 transition text-white font-medium py-3 rounded-lg mt-5"
-              >
-                {isSending ? "در حال ارسال..." : "ارسال کد تایید"}
-              </button>
-            </div>
-          )}
-
-          {step === "otp" && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2 text-center">کد تایید</h2>
-              <p className="text-sm text-gray-500 mb-5 text-center">
-                کد ارسال شده به +98{phoneDigits} را وارد کنید.
-              </p>
-              <OtpInput value={otpCode} onChange={setOtpCode} />
-              {error && <p className="text-red-600 text-sm mt-4 text-center">{error}</p>}
-              <button
-                onClick={handleVerifyOtp}
-                disabled={isVerifying}
-                className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-300 transition text-white font-medium py-3 rounded-lg mt-5 mb-3"
-              >
-                {isVerifying ? "در حال بررسی..." : "تایید کد"}
-              </button>
-              <div className="text-center text-sm">
-                {cooldown > 0 ? (
-                  <span className="text-gray-400">
-                    ارسال مجدد کد تا {cooldown} ثانیه دیگر
-                  </span>
-                ) : (
-                  <button onClick={handleSendOtp} className="text-green-800 underline">
-                    ارسال مجدد کد
-                  </button>
-                )}
-              </div>
+              <PhoneOtpFlow onVerified={handleVerified} />
+              {verifyError && (
+                <p className="text-red-600 text-sm mt-4 text-center">{verifyError}</p>
+              )}
             </div>
           )}
 
@@ -618,9 +555,7 @@ export default function CheckoutPage() {
                 یکی از روش‌های زیر را برای ارسال سفارش خود انتخاب کنید.
               </p>
 
-              {shippingError && (
-                <p className="text-red-600 text-sm mb-4">{shippingError}</p>
-              )}
+              {shippingError && <p className="text-red-600 text-sm mb-4">{shippingError}</p>}
 
               <div className="space-y-2">
                 {shippingOptions.map((option) => (
@@ -655,9 +590,7 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {orderError && (
-                <p className="text-red-600 text-sm mt-4">{orderError}</p>
-              )}
+              {orderError && <p className="text-red-600 text-sm mt-4">{orderError}</p>}
 
               <button
                 onClick={handleConfirmOrder}

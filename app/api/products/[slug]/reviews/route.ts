@@ -31,7 +31,7 @@ export async function GET(
   const customerIds = reviews.map((r) => r.customer_id);
   const { data: customers } = await supabase
     .from("customers")
-    .select("id, name, phone, display_name_preference")
+    .select("id, first_name, last_name, phone, display_name_preference")
     .in("id", customerIds.length > 0 ? customerIds : [""]);
 
   const shaped = reviews.map((r) => {

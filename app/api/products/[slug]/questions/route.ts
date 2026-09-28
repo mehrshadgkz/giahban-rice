@@ -42,7 +42,7 @@ export async function GET(
   ];
   const { data: customers } = await supabase
     .from("customers")
-    .select("id, name, phone, display_name_preference")
+    .select("id, first_name, last_name, phone, display_name_preference")
     .in("id", allCustomerIds.length > 0 ? allCustomerIds : [""]);
 
   function nameFor(customerId: string) {

@@ -1,11 +1,10 @@
 // Path: /app/account
 // File: AddressesTab.tsx
-// Version: 1.0.0
+// Version: 1.1.0
 //
-// Shows up to 3 saved addresses as collapsible rows — "آدرس اول
-// (تهران، تهران)" once filled in, "آدرس اول (خالی)" when genuinely
-// empty. Clicking a row expands it into the same editable field set
-// used at checkout, with the same ویرایش/ذخیره pattern as the settings tab.
+// v1.1.0: نام and نام خانوادگی removed from saved addresses, since
+// they now live in حساب کاربری. The /api/account/addresses route needs
+// no change: it simply won't receive those two fields from this form.
 
 "use client";
 
@@ -14,8 +13,6 @@ import { iranLocations, iranProvinces } from "../data/iranLocations";
 
 type Address = {
   slot: number;
-  first_name: string;
-  last_name: string;
   country: string;
   province: string;
   city: string;
@@ -34,11 +31,16 @@ export default function AddressesTab() {
   const [draft, setDraft] = useState<Address | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/account/addresses")
       .then((res) => res.json())
-      .then((data) => setAddresses(data.addresses));
+      .then((data) => {
+        if (data.addresses) setAddresses(data.addresses);
+        else setLoadError(data.error || "خطا در دریافت آدرس‌ها.");
+      })
+      .catch(() => setLoadError("خطا در برقراری ارتباط."));
   }, []);
 
   function summaryFor(address: Address) {
@@ -94,6 +96,10 @@ export default function AddressesTab() {
 
   const availableCities = draft?.province ? iranLocations[draft.province] || [] : [];
 
+  if (loadError) {
+    return <p className="text-red-600 text-sm">{loadError}</p>;
+  }
+
   return (
     <div className="max-w-2xl">
       <h2 className="text-lg font-semibold mb-6">آدرس‌ها</h2>
@@ -114,10 +120,11 @@ export default function AddressesTab() {
                   <div>
                     {address.province ? (
                       <div className="text-sm text-gray-600 space-y-1 mb-4">
-                        <p>{address.first_name} {address.last_name}</p>
                         <p>{address.province}، {address.city}</p>
                         <p>{address.street_address}</p>
-                        <p>کدپستی: {address.postal_code} — پلاک: {address.unit_number} — طبقه: {address.floor}</p>
+                        <p>
+                          کدپستی: {address.postal_code} — پلاک: {address.unit_number} — طبقه: {address.floor}
+                        </p>
                       </div>
                     ) : (
                       <p className="text-sm text-gray-400 mb-4">این آدرس هنوز خالی است.</p>
@@ -133,27 +140,6 @@ export default function AddressesTab() {
                   draft &&
                   draft.slot === address.slot && (
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">نام</label>
-                          <input
-                            type="text"
-                            value={draft.first_name}
-                            onChange={(e) => setDraft({ ...draft, first_name: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-gray-600 mb-1">نام خانوادگی</label>
-                          <input
-                            type="text"
-                            value={draft.last_name}
-                            onChange={(e) => setDraft({ ...draft, last_name: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          />
-                        </div>
-                      </div>
-
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">استان</label>
@@ -204,7 +190,10 @@ export default function AddressesTab() {
                             inputMode="numeric"
                             value={draft.postal_code}
                             onChange={(e) =>
-                              setDraft({ ...draft, postal_code: e.target.value.replace(/\D/g, "").slice(0, 10) })
+                              setDraft({
+                                ...draft,
+                                postal_code: e.target.value.replace(/\D/g, "").slice(0, 10),
+                              })
                             }
                             dir="ltr"
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"

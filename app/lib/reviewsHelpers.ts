@@ -1,6 +1,9 @@
 // Path: /app/lib
 // File: reviewsHelpers.ts
-// Version: 1.0.0
+// Version: 1.1.0
+//
+// v1.1.0: formatDisplayName now uses the separate first_name and
+// last_name fields instead of splitting one combined name.
 //
 // Two shared helpers used across reviews, questions, and answers:
 // checking whether a customer actually bought a given product (needed
@@ -9,10 +12,6 @@
 
 import { supabase } from "./supabase";
 
-// Checks Supabase's orders table for any order by this customer that
-// contains this product. Matches by slug where available (new orders),
-// falling back to matching by product name for older orders placed
-// before slugs were recorded in order items.
 export async function hasCustomerPurchased(
   customerId: string,
   productSlug: string,
@@ -33,31 +32,32 @@ export async function hasCustomerPurchased(
 }
 
 type DisplayNameSource = {
-  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   phone: string;
   display_name_preference: string;
 };
 
-// Formats how a customer's name should appear publicly on a review,
-// question, or answer — respecting their own chosen preference.
+const FALLBACK_NAME = "کاربر گیاه‌بان";
+
 export function formatDisplayName(customer: DisplayNameSource): string {
-  const fullName = customer.name?.trim() || "";
-  const [firstName, ...rest] = fullName.split(" ");
-  const lastName = rest.join(" ");
+  const first = customer.first_name?.trim() || "";
+  const last = customer.last_name?.trim() || "";
+  const fullName = [first, last].filter(Boolean).join(" ");
 
   switch (customer.display_name_preference) {
     case "first_name":
-      return firstName || "کاربر گیاه‌بان";
+      return first || FALLBACK_NAME;
     case "last_name":
-      return lastName || firstName || "کاربر گیاه‌بان";
+      return last || first || FALLBACK_NAME;
     case "full_name":
-      return fullName || "کاربر گیاه‌بان";
+      return fullName || FALLBACK_NAME;
     case "masked_phone": {
       // e.g. +989123456789 -> 0912***6789
       const local = customer.phone.replace("+98", "0");
       return `${local.slice(0, 4)}***${local.slice(-4)}`;
     }
     default:
-      return firstName || "کاربر گیاه‌بان";
+      return first || FALLBACK_NAME;
   }
 }
