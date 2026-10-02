@@ -1,32 +1,43 @@
 // Path: /app/api/otp/send
 // File: route.ts
-// Version: 1.0.0
+// Version: 1.0.1
+//
+// v1.0.1: the Melipayamak token is no longer written inside this file.
+// It is now read from the environment variable MELIPAYAMAK_TOKEN
+// (set in .env.local for local work, and in Vercel for the live site).
+// Everything else is unchanged from 1.0.0.
 //
 // Server-side API route — the ONLY place the Melipayamak token is used.
 //
-// Pending codes are now stored in Supabase's otp_codes table instead of
+// Pending codes are stored in Supabase's otp_codes table instead of
 // an in-memory JS Map. The old approach broke in two real situations:
-// 1. Restarting the dev server (or any server crash/redeploy) wiped all
-//    pending codes instantly, since they only ever lived in that
-//    process's memory.
-// 2. On Vercel specifically, a "send" request and the following "verify"
-//    request can be handled by two completely separate server instances,
-//    each with its own private memory — so the second instance would
-//    never see what the first one stored.
+//   1. Restarting the dev server (or any server crash/redeploy) wiped all
+//      pending codes instantly, since they only ever lived in that
+//      process's memory.
+//   2. On Vercel specifically, a "send" request and the following "verify"
+//      request can be handled by two completely separate server instances,
+//      each with its own private memory — so the second instance would
+//      never see what the first one stored.
 // Supabase is a single shared table every instance reads/writes to, so
 // both problems go away.
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase";
 
-const MELIPAYAMAK_TOKEN = "aae9a6c10acf49508e6dad736073ab7b";
-const MELIPAYAMAK_OTP_URL = `https://console.melipayamak.com/api/send/otp/${MELIPAYAMAK_TOKEN}`;
-
 const COOLDOWN_MS = 120 * 1000; // 120 seconds between sends
 const MAX_SENDS_PER_HOUR = 3;
 const HOUR_MS = 60 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
+  // Read the secret token from the environment (never from the code).
+  // If it is missing, stop early with a clear message in the server log.
+  const token = process.env.MELIPAYAMAK_TOKEN;
+  if (!token) {
+    console.error("MELIPAYAMAK_TOKEN is not set in the environment.");
+    return NextResponse.json({ error: "خطای داخلی سرور." }, { status: 500 });
+  }
+  const melipayamakOtpUrl = `https://console.melipayamak.com/api/send/otp/${token}`;
+
   const { phone } = await request.json();
 
   if (!phone || typeof phone !== "string") {
@@ -62,6 +73,7 @@ export async function POST(request: NextRequest) {
   // Enforce 3 sends per hour, per phone number
   let sendCount = 1;
   let hourWindowStart = now.toISOString();
+
   if (existing) {
     const windowStartMs = new Date(existing.hour_window_start).getTime();
     if (nowMs - windowStartMs < HOUR_MS) {
@@ -79,7 +91,7 @@ export async function POST(request: NextRequest) {
   const localPhone = phone.replace("+98", "0");
 
   try {
-    const res = await fetch(MELIPAYAMAK_OTP_URL, {
+    const res = await fetch(melipayamakOtpUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to: localPhone }),
