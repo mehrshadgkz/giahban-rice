@@ -86,7 +86,6 @@ export async function PATCH(request: NextRequest) {
     .update({
       first_name: first || null,
       last_name: last || null,
-      name: [first, last].filter(Boolean).join(" ") || null,
       email: email || null,
       iban: iban || null,
       display_name_preference: display_name_preference || "first_name",

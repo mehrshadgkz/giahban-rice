@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
       .from("customers")
       .insert({
         phone,
-        placeholder_email: `${localPhone}@giahban-customer.local`,
       })
       .select("id")
       .single();
