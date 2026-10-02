@@ -1,21 +1,19 @@
-// Path: app/about
+// Path: /app/about
 // File: AboutCarousel.tsx
-// Version: 1.1.0
+// Version: 1.2.0
 //
-// v1.1.0: this carousel now holds the 3 "guarantee section" photos
-// (white rice, cooked polow, and the hand-holding-grain close-up).
-// The 4th photo, rice-field.jpg, is NOT in here — it's used as a
-// single static image elsewhere on the page (see page.tsx section 2).
-//
-// "use client" is required here (but NOT in page.tsx) because this
-// file uses useState/useEffect, which only work in the browser.
+// v1.2.0: fixed arrow direction/position — this is an RTL (Persian)
+// site, so the right-side button is "previous" (back toward the start,
+// since Persian reading begins on the right) and the left-side button
+// is "next." The old version had this backwards, which is what made
+// the arrows feel "misplaced." Also switched from text glyphs (‹ ›) to
+// lucide-react chevron icons, which render consistently across devices.
 
 "use client";
 
 import { useState, useEffect } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 
-// The 3 photos shown in this slideshow, in order. To change which
-// pictures appear, just edit this list — nothing else needs to change.
 const images = [
   { src: "/about/white-rice.jpg", alt: "برنج سفید گیاه‌بان" },
   { src: "/about/polow.jpg", alt: "پلوی برنج گیاه‌بان" },
@@ -23,12 +21,8 @@ const images = [
 ];
 
 export default function AboutCarousel() {
-  // activeIndex tracks which of the 3 photos is currently showing (0, 1, or 2).
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Auto-advance to the next photo every 4 seconds. The cleanup function
-  // (the "return () => ..." part) stops the timer when the component is
-  // removed from the page, so it doesn't keep running in the background.
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIndex((current) => (current + 1) % images.length);
@@ -52,24 +46,24 @@ export default function AboutCarousel() {
         className="w-full h-80 object-cover"
       />
 
-      {/* Left/right arrow buttons, layered on top of the photo */}
+      {/* Previous — right side, since Persian reading starts on the right */}
       <button
         onClick={goToPrevious}
         aria-label="تصویر قبلی"
-        className="absolute top-1/2 -translate-y-1/2 left-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-800"
+        className="absolute top-1/2 -translate-y-1/2 right-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-800"
       >
-        ‹
+        <ChevronRight size={18} />
       </button>
+
+      {/* Next — left side */}
       <button
         onClick={goToNext}
         aria-label="تصویر بعدی"
-        className="absolute top-1/2 -translate-y-1/2 right-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-800"
+        className="absolute top-1/2 -translate-y-1/2 left-3 w-9 h-9 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-800"
       >
-        ›
+        <ChevronLeft size={18} />
       </button>
 
-      {/* Small dots at the bottom showing which photo (1 of 3, 2 of 3...)
-          is active. Clicking a dot jumps straight to that photo. */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
         {images.map((image, index) => (
           <button

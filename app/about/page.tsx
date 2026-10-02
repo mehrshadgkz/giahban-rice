@@ -1,16 +1,18 @@
-// Path: app/about
+// Path: /app/about
 // File: page.tsx
-// Version: 1.2.0
+// Version: 1.3.0
 //
-// v1.2.0: back to 2 photo spots on the page — section 2 has ONE static
-// photo (rice-field.jpg), and section 4 has the 3-photo carousel
-// (AboutCarousel.tsx: white-rice.jpg, polow.jpg, grains.jpg).
-// 1 static + 3 in the carousel = 4 photos total on this page.
-//
-// This file is a Server Component (no "use client" here) — only the
-// carousel itself needs the browser, so it's kept in its own file.
+// v1.3.0:
+// - Section 2 was visually unbalanced (tall photo next to one short,
+//   plain paragraph). Added an eyebrow label + heading above the text,
+//   matching the pattern section 4 already uses — same fix, no shrinking
+//   of the photo needed.
+// - Stats in section 3 now use StatCounter.tsx, animating from 0 up to
+//   the real number once scrolled into view, instead of appearing
+//   instantly as static text.
 
 import AboutCarousel from "./AboutCarousel";
+import StatCounter from "./StatCounter";
 
 export default function AboutPage() {
   return (
@@ -27,6 +29,12 @@ export default function AboutPage() {
       {/* ---------- Section 2: Intro text + ONE static photo ---------- */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center pb-16">
         <div className="order-2 md:order-1">
+          <p className="text-green-800 font-semibold mb-2">
+            بیش از ۴۰ سال تجربه در شالیزارهای فریدونکنار
+          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            چرا گیاه‌بان؟
+          </h2>
           <p className="text-gray-700 leading-relaxed">
             گیاه‌بان تنها یک وب‌سایت فروشگاهی نیست؛ بلکه مجموعه‌ای استوار با
             پشتوانه حضوری در پایتخت برنج ایران. تمام تلاش ما این است که
@@ -40,7 +48,7 @@ export default function AboutPage() {
           <img
             src="/about/rice-field.jpg"
             alt="شالیزار برنج گیاه‌بان"
-            className="w-full h-160 rounded-lg object-cover"
+            className="w-full h-80 rounded-lg object-cover"
           />
         </div>
       </section>
@@ -53,18 +61,9 @@ export default function AboutPage() {
           </h2>
 
           <div className="grid grid-cols-3 gap-6 text-center">
-            <div>
-              <p className="text-4xl font-bold">+۴۰</p>
-              <p className="text-sm text-gray-300 mt-2">سابقه کشاورزی</p>
-            </div>
-            <div>
-              <p className="text-4xl font-bold">٪۱۰۰</p>
-              <p className="text-sm text-gray-300 mt-2">خلوص و اصالت محصولات</p>
-            </div>
-            <div>
-              <p className="text-4xl font-bold">+۳۰۰</p>
-              <p className="text-sm text-gray-300 mt-2">رضایت مشتریان</p>
-            </div>
+            <StatCounter target={40} suffix="+" label="سابقه کشاورزی" />
+            <StatCounter target={100} prefix="٪" label="خلوص و اصالت محصولات" />
+            <StatCounter target={300} suffix="+" label="رضایت مشتریان" />
           </div>
         </div>
       </section>
